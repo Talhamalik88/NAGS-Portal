@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>User Dashboard - NAGS Portal</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f6f6f6;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            margin: 0;
+        }
+        .top-bar {
+            background-color: #003366;
+            color: white;
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            flex-wrap: wrap;
+        }
+        .top-bar h2 {
+            margin: 0;
+            font-size: 18px;
+        }
+        .top-bar img {
+            height: 45px;
+            margin-right: 10px;
+        }
+        .user-info {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+        }
+        .user-info span {
+            font-weight: bold;
+            font-size: 16px;
+        }
+        .logout {
+            background-color: #e74c3c;
+            border: none;
+            padding: 3px 10px;
+            font-size: 12px;
+            color: white;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 4px;
+        }
+        .nav-tabs-container {
+            background-color: #fff;
+            border-bottom: 2px solid #ddd;
+        }
+        .nav-tabs {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: flex-start;
+            padding-left: 10px;
+            gap: 5px;
+            overflow-x: auto;
+            white-space: nowrap;
+        }
+        .tab-button {
+            padding: 12px 18px;
+            border: none;
+            background: none;
+            cursor: pointer;
+            font-weight: bold;
+            color: #003366;
+            position: relative;
+        }
+        .tab-button:hover,
+        .tab-button.active {
+            border-bottom: 3px solid #003366;
+            background-color: #eef2f5;
+        }
+        .content-area {
+            padding: 20px;
+            flex: 1;
+        }
+        .footer {
+            background-color: #003366;
+            color: white;
+            padding: 10px 20px;
+            text-align: right;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="top-bar">
+    <div style="display: flex; align-items: center;">
+        <img src="{{ url_for('static', filename='logo.jpg') }}" alt="Logo">
+        <h2>NAGS Maintenance Staff Portal</h2>
+    </div>
+    <div class="user-info">
+        <span>{{ session['user']['name'] }}</span>
+        <form action="/logout" method="POST" style="display:inline;">
+            <button class="logout">Logout</button>
+        </form>
+    </div>
+</div>
+
+<!-- Navigation Tabs -->
+<div class="nav-tabs-container">
+    <div class="nav-tabs">
+        <button class="tab-button {% if active_tab == 'readsign' %}active{% endif %}" onclick="location.href='/user-dashboard?tab=readsign'">
+
+            Read & Sign
+            <span id="readsign-tab-badge" style="background:red; color:white; padding:2px 6px; border-radius:12px; font-size:11px; position:absolute; top:0; right:0; display:none;">
+                <!-- will be updated dynamically -->
+            </span>
+
+        </button>
+        <button class="tab-button {% if active_tab == 'engineers' %}active{% endif %}" onclick="location.href='/user-dashboard?tab=engineers'">Engineers Dashboard</button>
+        <button class="tab-button {% if active_tab == 'maintenance' %}active{% endif %}" onclick="location.href='/user-dashboard?tab=maintenance'">Maintainance Data / NAGS Docs</button>
+        <button class="tab-button {% if active_tab == 'mydocs' %}active{% endif %}" onclick="location.href='/user-dashboard?tab=mydocs'">
+            My Documents
+            {% if session['doc_expiry_count'] > 0 %}
+                <span style="background:red; color:white; padding:2px 6px; border-radius:12px; font-size:11px; position:absolute; top:0; right:0;">
+                    {{ session['doc_expiry_count'] }} doc expiring
+                </span>
+            {% endif %}
+        </button>
+    </div>
+</div>
+<!-- Content Area -->
+<div class="content-area">
+    {% include tab_template %}
+</div>
+
+<!-- Footer -->
+<div class="footer">
+    Design and Developed by Talha
+</div>
+
+<!-- Signature Modal -->
+<div class="modal fade" id="signModal" tabindex="-1" aria-labelledby="signModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content p-3">
+      <div class="modal-header">
+        <h5 class="modal-title" id="signModalLabel">Sign Document</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" onclick="clearSignature()"></button>
+      </div>
+      <div class="modal-body text-center">
+        <canvas id="signaturePad"
+                width="700"
+                height="250"
+                style="border:1px solid #ccc; width: 100%; max-width: 100%; touch-action: none;">
+        </canvas>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary btn-sm" onclick="clearSignature()">Clear</button>
+        <button class="btn btn-primary btn-sm" onclick="submitSignature()">Submit</button>
+      </div>
+      <form id="signForm" method="POST" action="/sign-document" style="display:none;">
+        <input type="hidden" name="recipient_id" id="recipientIdInput">
+        <input type="hidden" name="signature_data" id="signatureDataInput">
+      </form>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+<script>
+let canvas, ctx;
+
+function clearSignature() {
+    if (ctx && canvas) ctx.clearRect(0, 0, canvas.width, canvas.height);
+}
+
+function initCanvasOnModalShow() {
+    const modalEl = document.getElementById('signModal');
+    modalEl.addEventListener('shown.bs.modal', () => {
+        canvas = document.getElementById("signaturePad");
+        if (!canvas) return;
+
+        const ratio = window.devicePixelRatio || 1;
+        const displayWidth = canvas.offsetWidth;
+        const displayHeight = canvas.offsetHeight;
+        canvas.width = displayWidth * ratio;
+        canvas.height = displayHeight * ratio;
+
+        ctx = canvas.getContext("2d");
+        ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+        ctx.strokeStyle = "#000000";
+        ctx.lineWidth = 2;
+
+        let drawing = false;
+
+        function getRelativePos(e) {
+            const rect = canvas.getBoundingClientRect();
+            const source = e.touches ? e.touches[0] : e;
+            return {
+                x: source.clientX - rect.left,
+                y: source.clientY - rect.top
+            };
+        }
+
+        canvas.onmousedown = (e) => {
+            drawing = true;
+            const pos = getRelativePos(e);
+            ctx.beginPath();
+            ctx.moveTo(pos.x, pos.y);
+        };
+        canvas.onmousemove = (e) => {
+            if (drawing) {
+                const pos = getRelativePos(e);
+                ctx.lineTo(pos.x, pos.y);
+                ctx.stroke();
+            }
+        };
+        canvas.onmouseup = () => drawing = false;
+        canvas.onmouseleave = () => drawing = false;
+
+        canvas.addEventListener("touchstart", (e) => {
+            e.preventDefault();
+            if (e.touches.length > 0) {
+                drawing = true;
+                const touch = e.touches[0];
+                const rect = canvas.getBoundingClientRect();
+                ctx.beginPath();
+                ctx.moveTo(touch.clientX - rect.left, touch.clientY - rect.top);
+            }
+        }, { passive: false });
+
+        canvas.addEventListener("touchmove", (e) => {
+            e.preventDefault();
+            if (!drawing || e.touches.length === 0) return;
+            const touch = e.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            ctx.lineTo(touch.clientX - rect.left, touch.clientY - rect.top);
+            ctx.stroke();
+        }, { passive: false });
+
+        canvas.addEventListener("touchend", () => drawing = false);
+    });
+}
+
+document.addEventListener("DOMContentLoaded", initCanvasOnModalShow);
+
+function submitSignature() {
+    if (!canvas) return;
+    const dataURL = canvas.toDataURL("image/png");
+
+    const formData = new FormData();
+    formData.append("recipient_id", document.getElementById("recipientIdInput").value);
+    formData.append("signature_data", dataURL);
+
+    fetch("/sign-document", {
+        method: "POST",
+        body: formData
+    }).then(response => {
+        if (!response.ok) throw new Error("Failed to submit signature.");
+        return response.text();
+    }).then(result => {
+        if (result.trim() === "OK") {
+            const modalEl = bootstrap.Modal.getInstance(document.getElementById('signModal'));
+            if (modalEl) modalEl.hide();
+            loadDocuments();        // Refresh the table dynamically
+            updateBadgeCount();     // Dynamically update badge
+        } else {
+            alert("Failed to submit signature.");
+        }
+
+    }).catch(err => {
+        console.error(err);
+        alert("An error occurred while submitting the signature.");
+    });
+}
+
+function openUploadDialog(recipientId) {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/png,image/jpeg,image/jpg';
+
+    input.onchange = () => {
+        const file = input.files[0];
+        if (!file) return;
+
+        const allowedTypes = ['image/png', 'image/jpeg'];
+        if (!allowedTypes.includes(file.type)) {
+            showUploadError("Invalid file type. Only JPG and PNG allowed.");
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append("recipient_id", recipientId);
+        formData.append("file", file);
+
+        fetch("/sign-document", {
+            method: "POST",
+            body: formData
+        }).then(response => {
+            if (!response.ok) throw new Error("Upload failed");
+            return response.text();
+        }).then(result => {
+            if (result.trim() === "OK") {
+                loadDocuments(); // ✅ Needed to refresh table
+            } else {
+                showUploadError(result);
+            }
+        }).catch(err => {
+            console.error(err);
+            showUploadError("Something went wrong while uploading.");
+        });
+    };
+
+    input.click();
+}
+
+function showUploadError(message) {
+    let alertDiv = document.getElementById("uploadError");
+    if (!alertDiv) {
+        alertDiv = document.createElement("div");
+        alertDiv.id = "uploadError";
+        alertDiv.className = "alert alert-danger mt-3 text-center";
+        const table = document.getElementById("documentTable");
+        if (table && table.parentElement) {
+            table.parentElement.insertBefore(alertDiv, table);
+        }
+    }
+    alertDiv.textContent = message;
+}
+
+// Dynamically update unread badge on every document load
+function updateBadgeCount() {
+    fetch("/get-unread-count")
+        .then(response => response.json())
+        .then(data => {
+            const unreadCount = data.count;
+            const badge = document.querySelector("#readsign-tab-badge");
+            if (badge) {
+                badge.textContent = unreadCount > 0 ? `${unreadCount} unread` : '';
+                badge.style.display = unreadCount > 0 ? 'inline-block' : 'none';
+            }
+        });
+}
+
+
+document.addEventListener("DOMContentLoaded", () => {
+    updateBadgeCount();
+});
+</script>
+</body>
+</html>
+

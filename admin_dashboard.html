@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin Panel - NAGS</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            background-color: #f6f6f6;
+        }
+
+        .top-bar {
+            background-color: #003366;
+            color: white;
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .top-bar img {
+            height: 45px;
+            margin-right: 15px;
+        }
+
+        .top-bar h2 {
+            margin: 0;
+            font-size: 22px;
+        }
+
+        .top-bar .user-info {
+            text-align: right;
+        }
+
+        .top-bar .logout {
+            background-color: #e74c3c;
+            border: none;
+            padding: 6px 14px;
+            color: white;
+            font-weight: bold;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 5px;
+        }
+
+        .tabs {
+            display: flex;
+            background-color: #fff;
+            border-bottom: 2px solid #ddd;
+        }
+
+        .tab-button {
+            padding: 12px 18px;
+            border: none;
+            background: none;
+            cursor: pointer;
+            font-weight: bold;
+            color: #003366;
+        }
+
+        .tab-button:hover,
+        .tab-button.active {
+            border-bottom: 3px solid #003366;
+            background-color: #eef2f5;
+        }
+
+        .content-area {
+            padding: 30px;
+        }
+
+        .footer {
+            margin-top: 50px;
+            background-color: #003366;
+            color: white;
+            padding: 12px;
+            text-align: center;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="top-bar">
+        <div style="display: flex; align-items: center;">
+            <img src="{{ url_for('static', filename='logo.jpg') }}" alt="Logo">
+            <h2>Admin (Talha)</h2>
+        </div>
+        <div class="user-info">
+            <a href="/admin-dashboard" style="color:white; text-decoration: none; font-weight:bold;">Admin Home</a><br>
+            <form action="/logout" method="POST" style="display:inline;">
+                <button class="logout">Logout</button>
+            </form>
+        </div>
+    </div>
+
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <div style="padding: 15px; background-color: #dff0d8; color: #3c763d; margin: 20px 30px; border-radius: 5px;">
+          {% for message in messages %}
+            <p><strong>{{ message }}</strong></p>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    <div class="tabs">
+        <button class="tab-button {% if active_tab == 'add' %}active{% endif %}" onclick="location.href='/admin-dashboard?tab=add'">Add Document</button>
+        <button class="tab-button {% if active_tab == 'report' %}active{% endif %}" onclick="location.href='/admin-dashboard?tab=report'">Generate Report</button>
+        <button class="tab-button {% if active_tab == 'maintenance' %}active{% endif %}" onclick="location.href='/admin-dashboard?tab=maintenance'">Maintenance Data</button>
+        <button class="tab-button {% if active_tab == 'engineers' %}active{% endif %}" onclick="location.href='/admin-dashboard?tab=engineers'">Engineers Dashboard</button>
+        <button class="tab-button {% if active_tab == 'profiles' %}active{% endif %}" onclick="location.href='/admin-dashboard?tab=profiles'">Manage Profiles</button> <!-- NEW BUTTON ADDED HERE -->
+    </div>
+
+    <div class="content-area">
+        {% include tab_template %}
+    </div>
+
+    <div class="footer">
+        Design and Developed by Talha
+    </div>
+</body>
+</html>

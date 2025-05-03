@@ -1,0 +1,209 @@
+<h4 class="mb-3">Read & Sign Documents</h4>
+
+<!-- Filter Section -->
+<div class="d-flex flex-wrap gap-2 mb-3">
+    <div class="d-flex align-items-center">
+        <label for="sourceFilter" class="form-label me-2 mb-0">Filter by Source:</label>
+        <select id="sourceFilter" class="form-select form-select-sm" onchange="filterTable()" style="min-width: 120px;">
+            <option value="all">All</option>
+        </select>
+    </div>
+    <div class="d-flex align-items-center">
+        <label for="statusFilter" class="form-label me-2 mb-0">Status:</label>
+        <select id="statusFilter" class="form-select form-select-sm" onchange="filterTable()" style="min-width: 120px;">
+            <option value="all">All</option>
+            <option value="signed">Signed</option>
+            <option value="not-signed">Not Signed</option>
+        </select>
+    </div>
+</div>
+
+<!-- Table Section -->
+<div style="overflow-x: auto;">
+    <table id="documentTable" class="table table-bordered table-hover text-center align-middle" style="font-family: 'Times New Roman', serif; font-size: 13px;">
+        <thead class="table-dark">
+            <tr>
+                <th class="d-none d-md-table-cell" style="width: 50px;">S.No</th>
+                <th style="min-width: 180px;">Document Name</th>
+                <th style="white-space: nowrap;">Source</th>
+                <th style="min-width: 90px; white-space: normal;">Published<br>Date</th>
+                <th style="min-width: 80px;">Actions</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+</div>
+
+<!-- Styles -->
+<style>
+    #documentTable td {
+        word-wrap: break-word;
+        white-space: normal;
+    }
+    #documentTable .btn-sm {
+        font-size: 12px !important;
+        padding: 3px 6px !important;
+    }
+    #documentTable td .btn {
+        width: 95%;
+        display: block;
+        margin: 2px auto;
+    }
+</style>
+
+<!-- JS -->
+<script>
+function openSignModal(recipientId) {
+    document.getElementById('recipientIdInput').value = recipientId;
+    const modalEl = document.getElementById('signModal');
+    const modal = new bootstrap.Modal(modalEl);
+    modal.show();
+}
+
+function openUploadDialog(recipientId) {
+    const uploadInput = document.createElement('input');
+    uploadInput.type = 'file';
+    uploadInput.accept = '.jpg,.jpeg,.png';
+    uploadInput.onchange = () => {
+        const file = uploadInput.files[0];
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append("recipient_id", recipientId);
+        formData.append("file", file);
+
+        fetch("/sign-document", {
+            method: "POST",
+            body: formData
+        })
+        .then(res => {
+            if (res.ok) {
+                loadDocuments();
+                updateBadgeCount();
+            } else {
+                alert("Failed to upload signature.");
+            }
+        });
+    };
+    uploadInput.click();
+}
+
+function updateBadgeCount() {
+    fetch("/get-unread-count")
+        .then(response => response.json())
+        .then(data => {
+            const unreadCount = data.count;
+            const badge = document.querySelector('#readsign-tab .badge');
+            if (badge) {
+                badge.textContent = unreadCount > 0 ? `${unreadCount} unread` : '';
+                badge.style.display = unreadCount > 0 ? 'inline-block' : 'none';
+            }
+        });
+}
+
+
+
+function loadDocuments() {
+    fetch('/fetch-user-documents')
+        .then(response => response.json())
+        .then(data => {
+            const tbody = document.querySelector("#documentTable tbody");
+            tbody.innerHTML = "";
+
+            if (!Array.isArray(data) || data.length === 0) {
+                const row = document.createElement("tr");
+                row.innerHTML = '<td colspan="5">No documents found.</td>';
+                tbody.appendChild(row);
+                return;
+            }
+
+            data.forEach((doc, index) => {
+                const tr = document.createElement("tr");
+                tr.setAttribute("data-source", doc.source);
+                tr.setAttribute("data-status", doc.is_signed ? "signed" : "not-signed");
+                tr.style.backgroundColor = doc.is_signed ? "#d4edda" : "#f8d7da";
+
+                const dateParts = doc.upload_time.split(" ");
+                const stackedDate = dateParts.length === 2 ? `${dateParts[0]}<br>${dateParts[1]}` : doc.upload_time;
+
+                let actions = `<a href="/view-doc/${doc.filename}" target="_blank" class="btn btn-sm btn-outline-primary">Read</a>`;
+                if (!doc.is_signed) {
+                    actions += `
+                        <button class="btn btn-sm btn-outline-success" onclick="openSignModal(${doc.recipient_id})">Sign</button>
+                        <button class="btn btn-sm btn-outline-primary" onclick="openUploadDialog(${doc.recipient_id})">Upload</button>
+                    `;
+                }
+
+                tr.innerHTML = `
+                    <td class="d-none d-md-table-cell">${index + 1}</td>
+                    <td class="wrap-text">${doc.subject}</td>
+                    <td>${doc.source}</td>
+                    <td><span style="display: inline-block;">${stackedDate}</span></td>
+                    <td>${actions}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            populateSourceFilter();
+            filterTable();
+            updateBadgeCount();
+        })
+        .catch(error => {
+            console.error("Error loading documents:", error);
+        });
+}
+
+function filterTable() {
+    const sourceFilter = document.getElementById('sourceFilter').value;
+    const statusFilter = document.getElementById('statusFilter').value;
+    const rows = document.querySelectorAll("#documentTable tbody tr");
+    rows.forEach(row => {
+        const matchesSource = (sourceFilter === 'all' || row.dataset.source === sourceFilter);
+        const matchesStatus = (statusFilter === 'all' || row.dataset.status === statusFilter);
+        row.style.display = (matchesSource && matchesStatus) ? "" : "none";
+    });
+}
+
+function populateSourceFilter() {
+    const sourceSet = new Set(["all"]);
+    const rows = document.querySelectorAll("#documentTable tbody tr");
+    const sourceFilter = document.getElementById('sourceFilter');
+    rows.forEach(row => sourceSet.add(row.dataset.source));
+    sourceFilter.innerHTML = "";
+    sourceSet.forEach(source => {
+        const option = document.createElement('option');
+        option.value = source;
+        option.textContent = source.charAt(0).toUpperCase() + source.slice(1);
+        sourceFilter.appendChild(option);
+    });
+    sourceFilter.value = 'all';
+}
+
+window.onload = loadDocuments;
+
+document.addEventListener("DOMContentLoaded", function () {
+    const signForm = document.getElementById("signForm");
+    if (signForm) {
+        signForm.addEventListener("submit", function (e) {
+            e.preventDefault();
+            const formData = new FormData(signForm);
+
+            fetch("/sign-document", {
+                method: "POST",
+                body: formData
+            })
+            .then(res => {
+                if (res.ok) {
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('signModal'));
+                    if (modal) modal.hide();
+                    loadDocuments();      // Reload document list
+                    updateBadgeCount();  // 🔄 Update badge count immediately
+                } else {
+                    alert("Failed to save signature.");
+                }
+            });
+        });
+    }
+});
+</script>
+

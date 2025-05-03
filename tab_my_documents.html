@@ -1,0 +1,104 @@
+<!-- Section: Uploaded Documents -->
+<h4 class="mb-3">Your Uploaded Documents</h4>
+
+{% if documents %}
+<div class="table-responsive mb-4">
+    <table class="table table-bordered table-hover text-center align-middle" style="font-family: 'Times New Roman', serif; font-size: 13px;">
+        <thead class="table-dark small">
+            <tr>
+                <th style="white-space: nowrap;">S.No</th>
+                <th style="white-space: normal;">Document Name</th>
+                <th style="white-space: nowrap;">Expiry Date</th>
+                <th style="white-space: nowrap;">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for doc in documents %}
+            {% set row_highlight = '' %}
+            {% if doc.expiry_date %}
+                {% set exp = doc.expiry_date | todatetime('%Y-%m-%d') %}
+                {% if exp.__class__.__name__ == 'datetime' and (exp.date() - now.date()).days <= 30 %}
+                    {% set row_highlight = 'background-color: #f8d7da !important;' %}
+                {% endif %}
+            {% endif %}
+            <tr style="{{ row_highlight }}">
+                <td style="border:1px solid #ccc; padding:8px;">{{ loop.index }}</td>
+                <td class="wrap-text" style="border:1px solid #ccc; padding:8px;">{{ doc.doc_name }}</td>
+                <td style="border:1px solid #ccc; padding:8px;">
+                    {% if doc.expiry_date %}
+                        {{ doc.expiry_date | todatetime('%Y-%m-%d', '%d-%b-%Y') }}
+                    {% else %}
+                        N/A
+                    {% endif %}
+                </td>
+                <td style="border:1px solid #ccc; padding:8px;">
+                    <div class="d-flex flex-column flex-md-row justify-content-center gap-1">
+                        <a href="{{ url_for('view_user_document', filename=doc.file_path) }}?v={{ loop.index }}" target="_blank" class="btn btn-sm btn-outline-primary">View</a>
+                        <form method="POST" action="/delete-user-document" style="display:inline;">
+                            <input type="hidden" name="doc_id" value="{{ doc.id }}">
+                            <button type="submit" onclick="return confirm('Are you sure?')" class="btn btn-sm btn-outline-danger">Delete</button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<p>No documents uploaded yet.</p>
+{% endif %}
+
+<!-- Section: Upload New Document -->
+<div class="bg-light p-3 rounded shadow-sm" style="font-family: 'Times New Roman', serif;">
+    <h5 class="mb-3">Upload New Document</h5>
+    <form method="POST" enctype="multipart/form-data" action="/user-dashboard?tab=mydocs" onsubmit="return validateUploadForm()">
+        <div class="row g-2 align-items-end">
+            <div class="col-lg-4 col-md-6">
+                <label class="form-label small mb-1">Document Name:</label>
+                <input type="text" name="doc_name" id="doc_name" required class="form-control form-control-sm">
+            </div>
+            <div class="col-lg-3 col-md-6">
+                <label class="form-label small mb-1">Expiry Date (optional):</label>
+                <input type="text" name="expiry_date" class="form-control form-control-sm" id="expiry_date" placeholder="Select expiry date">
+            </div>
+            <div class="col-lg-5 col-md-12 d-flex gap-2 mt-md-2 mt-lg-0">
+                <input type="file" name="file" id="file_input" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" required hidden>
+                <label for="file_input" class="btn btn-outline-info btn-sm flex-fill mb-0 text-nowrap">📤 Upload Doc</label>
+                <button type="submit" id="saveBtn" class="btn btn-success btn-sm flex-fill mb-0" disabled>Save</button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Enable Save only if name and file are filled -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const nameInput = document.getElementById('doc_name');
+    const fileInput = document.getElementById('file_input');
+    const saveBtn = document.getElementById('saveBtn');
+
+    function toggleSaveButton() {
+        saveBtn.disabled = !(nameInput.value.trim() !== "" && fileInput.files.length > 0);
+    }
+
+    nameInput.addEventListener('input', toggleSaveButton);
+    fileInput.addEventListener('change', toggleSaveButton);
+});
+</script>
+
+<!-- Flatpickr CSS and JS -->
+<link href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    flatpickr("#expiry_date", {
+        dateFormat: "Y-m-d",
+        altInput: true,
+        altFormat: "d-M-Y",
+        allowInput: true,
+        minDate: "today"  // 🚫 Disable all past dates
+    });
+});
+</script>

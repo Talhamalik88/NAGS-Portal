@@ -1,0 +1,81 @@
+<div style="display: flex; gap: 15px; flex-wrap: wrap;">
+
+    <!-- Left side: Add New Document Form -->
+    <div style="flex: 1; min-width: 300px;">
+        <h2>Add New Document</h2>
+
+        {% with messages = get_flashed_messages() %}
+          {% if messages %}
+            <ul style="list-style: none; padding: 0; color: green; font-weight: bold;">
+              {% for msg in messages %}
+                <li>{{ msg }}</li>
+              {% endfor %}
+            </ul>
+          {% endif %}
+        {% endwith %}
+
+        <form method="POST" action="/admin-dashboard?tab=add" enctype="multipart/form-data"
+              style="background:white; padding:20px; border-radius:8px; box-shadow:0 0 10px rgba(0,0,0,0.05); max-width:500px;">
+            
+            <label for="document">Select File:</label>
+            <input type="file" name="document" required
+                   style="width:100%; padding:10px; margin-top:5px; margin-bottom:10px;">
+
+            <label for="subject">Document Subject:</label>
+            <input type="text" name="subject" placeholder="Leave blank to use filename"
+                   style="width:100%; padding:10px; margin-top:5px; margin-bottom:10px;">
+
+            <label for="source">Source:</label>
+            <input type="text" name="source" required
+                   style="width:100%; padding:10px; margin-top:5px; margin-bottom:10px;">
+
+            <label>Assign To:</label><br>
+            <input type="checkbox" name="send_to_engineers" checked> Engineers<br>
+            <input type="checkbox" name="send_to_technicians"> Technicians<br>
+
+            <button type="submit"
+                    style="margin-top:20px; padding:10px 15px; background-color:#003366; color:white; border:none; border-radius:5px; cursor:pointer; width:100%;">
+                Distribute Document
+            </button>
+        </form>
+    </div>
+
+    <!-- Right side: Existing Documents Table -->
+    <div style="flex: 1; min-width: 300px;">
+        <h2>Existing Documents</h2>
+        <table style="width:100%; background:white; border-collapse: collapse; box-shadow:0 0 10px rgba(0,0,0,0.05);">
+            <thead style="background-color:#003366; color:white;">
+                <tr>
+                    <th style="padding:8px; border:1px solid #ccc;">S.No</th>
+                    <th style="padding:8px; border:1px solid #ccc;">Subject</th>
+                    <th style="padding:8px; border:1px solid #ccc;">Source</th>
+                    <th style="padding:8px; border:1px solid #ccc;">Upload Time</th>
+                    <th style="padding:8px; border:1px solid #ccc;">Assigned To</th>
+                    <th style="padding:8px; border:1px solid #ccc;">View</th>
+                    <th style="padding:8px; border:1px solid #ccc;">Action</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for doc in existing_documents %}
+                <tr>
+                    <td style="padding:8px; border:1px solid #ccc;">{{ loop.index }}</td>
+                    <td style="padding:8px; border:1px solid #ccc;">{{ doc.subject }}</td>
+                    <td style="padding:8px; border:1px solid #ccc;">{{ doc.source }}</td>
+                    <td style="padding:8px; border:1px solid #ccc;">{{ doc.upload_time }}</td>
+                    <td style="padding:8px; border:1px solid #ccc;">{{ doc.assigned_roles or 'N/A' }}</td>
+                    <td style="padding:8px; border:1px solid #ccc;">
+                        <a href="/view-doc/{{ doc.filename }}" target="_blank" style="text-decoration: none; color: #003366; font-weight: bold;">View Document</a>
+                    </td>
+                    <td style="padding:8px; border:1px solid #ccc;">
+                        <form method="POST" action="/admin-delete-document/{{ doc.id }}" style="display:inline;">
+                            <button type="submit" onclick="return confirm('Are you sure you want to delete this document?')" style="background-color: #e74c3c; color: white; padding: 5px 10px; border: none; border-radius: 5px; cursor: pointer;">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+</div>

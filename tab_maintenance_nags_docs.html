@@ -1,0 +1,21 @@
+<div class="container-fluid py-4">
+    {% if maintenance_file %}
+        <div class="d-flex justify-content-center mb-3">
+            <a href="/maintenance_data/{{ maintenance_file }}" target="_blank" class="btn btn-outline-primary btn-sm px-3 py-1" style="font-size: 0.85rem;">
+                <i class="bi bi-download"></i> Download PDF
+            </a>
+        </div>
+        <div class="d-flex justify-content-center">
+            <div style="border: 2px solid #0d6efd; padding: 10px; border-radius: 6px; width: 100%; max-width: 1000px;">
+                <iframe src="/maintenance_data/{{ maintenance_file }}#navpanes=0&toolbar=0" width="100%" height="600px" style="border: none;" allowfullscreen></iframe>
+            </div>
+        </div>
+    {% else %}
+        <div class="alert alert-warning text-center mt-4">
+            No maintenance file available at the moment.
+        </div>
+    {% endif %}
+</div>
+
+<!-- Bootstrap Icons (optional) -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">

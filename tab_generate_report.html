@@ -1,0 +1,166 @@
+
+<style>
+    .signed {
+        color: green;
+        font-weight: bold;
+    }
+    .not-signed {
+        color: red;
+        font-weight: bold;
+    }
+</style>
+
+<h2>Generate Report</h2>
+
+<div style="display: flex; gap: 20px; flex-wrap: wrap;">
+
+    <!-- Left Panel: Filters + Generate -->
+    <div style="flex: 1; min-width: 250px; background-color: #f8f9fa; padding: 20px; border-radius: 8px;">
+        <form method="POST" action="/generate-report" id="generate-form">
+            <label>Select Source:</label><br>
+            <select name="source" id="sourceSelect" required onchange="filterDocuments()" style="width: 100%; margin-bottom: 15px;">
+                <option value="">-- Select --</option>
+                {% for s in sources %}
+                    <option value="{{ s }}">{{ s }}</option>
+                {% endfor %}
+            </select><br>
+
+            <label>Select Document:</label><br>
+            <select name="document_id" id="documentSelect" required onchange="loadSignStatus()" style="width: 100%; margin-bottom: 20px;">
+                <option value="">-- Select Source First --</option>
+            </select><br>
+
+            <button type="submit" style="width: 100%; padding: 8px; background-color: #003366; color: white; border: none; border-radius: 5px;">
+                Generate PDF Report
+            </button>
+        </form>
+
+        <hr style="margin: 20px 0;">
+
+        <div class="filter">
+            <label for="statusFilter" style="font-weight:bold;">Filter Table:</label><br>
+            <select id="statusFilter" onchange="filterTable()" style="width: 100%; margin-top: 8px;">
+                <option value="all">All</option>
+                <option value="signed">Read and Signed</option>
+                <option value="not-signed">Not Signed</option>
+            </select>
+        </div>
+
+        <button onclick="printStatusTable()" style="margin-top: 15px; width: 100%; padding: 8px; background-color: #28a745; color: white; border: none; border-radius: 5px;">
+            Print Table
+        </button>
+    </div>
+
+    <!-- Right Panel: Sign Status Table -->
+    <div style="flex: 3; min-width: 400px; background-color: white; padding: 20px; border-radius: 8px; overflow-x: auto;">
+        <h3 style="margin-top:0;">Sign Status Overview</h3>
+        <table id="statusTable" border="1" cellspacing="0" cellpadding="8" style="width:100%; border-collapse: collapse; margin-top: 10px;">
+            <thead>
+                <tr style="background-color:#003366; color:white;">
+                    <th>S.No.</th>
+                    <th>Name</th>
+                    <th>Payroll</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+</div>
+
+<script>
+    const groupedDocs = {{ grouped_documents|tojson }};
+    const docSelect = document.getElementById("documentSelect");
+
+    function filterDocuments() {
+        const source = document.getElementById("sourceSelect").value;
+        docSelect.innerHTML = "";
+
+        if (!source || !groupedDocs[source]) {
+            docSelect.innerHTML = '<option value="">-- No Documents --</option>';
+            return;
+        }
+
+        groupedDocs[source].forEach(doc => {
+            const option = document.createElement("option");
+            option.value = doc.id;
+            option.textContent = doc.subject;
+            docSelect.appendChild(option);
+        });
+
+        if (groupedDocs[source].length > 0) {
+            docSelect.value = groupedDocs[source][0].id;
+            loadSignStatus();
+        }
+    }
+
+    function loadSignStatus() {
+        const docId = docSelect.value;
+        if (!docId) return;
+
+        fetch(`/get-sign-status/${docId}`)
+            .then(response => response.json())
+            .then(data => {
+                const tbody = document.querySelector("#statusTable tbody");
+                tbody.innerHTML = "";
+
+                data.forEach(item => {
+                    const row = document.createElement("tr");
+                    row.innerHTML = `
+                        <td>${item.sno}</td>
+                        <td>${item.name}</td>
+                        <td>${item.payroll_number}</td>
+
+                        <td class="${item.is_signed ? 'signed' : 'not-signed'}">${item.status}</td>
+                    `;
+                    tbody.appendChild(row);
+                });
+
+                filterTable();
+            });
+    }
+
+    function filterTable() {
+        const filter = document.getElementById("statusFilter").value;
+        const rows = document.querySelectorAll("#statusTable tbody tr");
+
+        rows.forEach(row => {
+            const statusCell = row.querySelector("td:last-child");
+            const isSigned = statusCell.classList.contains("signed");
+
+            if (filter === "all") {
+                row.style.display = "";
+            } else if (filter === "signed" && isSigned) {
+                row.style.display = "";
+            } else if (filter === "not-signed" && !isSigned) {
+                row.style.display = "";
+            } else {
+                row.style.display = "none";
+            }
+        });
+    }
+
+    function printStatusTable() {
+
+        const printContents = document.querySelector("#statusTable").outerHTML;
+        const newWin = window.open('', '', 'height=600,width=800');
+        newWin.document.write('<html><head><title>Print Table</title></head><body>');
+        newWin.document.write('<h3>Read & Sign Status Report</h3>');
+        newWin.document.write(printContents);
+        newWin.document.write('</body></html>');
+        newWin.document.close();
+        newWin.print();
+    }
+
+    // --- Fix the form submission problem ---
+    document.getElementById('generate-form').addEventListener('submit', function(event) {
+        const docId = document.getElementById('documentSelect').value;
+        if (!docId) {
+            event.preventDefault();
+            alert("Please select a Document after choosing Source!");
+        }
+    });
+
+</script>
+

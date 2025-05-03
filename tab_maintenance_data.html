@@ -1,0 +1,41 @@
+<h2>Maintenance Data</h2>
+
+<div style="display: flex; gap: 20px; flex-wrap: wrap;">
+
+    <!-- Left Panel: Upload Form -->
+    <div style="flex: 1; min-width: 250px; background-color: #f8f9fa; padding: 20px; border-radius: 8px;">
+        <form method="POST" action="/upload-maintenance-file" enctype="multipart/form-data">
+            <label for="maintenance_file" style="font-weight:bold;">Upload New Maintenance File (PDF, Word, Excel):</label><br><br>
+            <input type="file" id="maintenance_file" name="maintenance_file" accept=".pdf,.docx,.xlsx" required style="width: 100%; margin-bottom: 15px; padding: 8px;">
+            <button type="submit" style="width: 100%; padding: 10px; background-color: #003366; color: white; border: none; border-radius: 5px;">
+                Upload File
+            </button>
+        </form>
+    </div>
+
+    <!-- Right Panel: File Viewer -->
+    <div style="flex: 3; min-width: 300px; background-color: white; padding: 20px; border-radius: 8px; overflow-x: auto;">
+        <h3 style="margin-top:0;">Current Maintenance Data</h3>
+
+        {% if maintenance_file %}
+            {% if maintenance_file.endswith('.pdf') %}
+                <div style="position: relative; padding-bottom: 75%; height: 0; overflow: hidden; max-width: 100%; background: #f8f9fa;">
+                    <iframe src="{{ url_for('serve_maintenance_file', filename=maintenance_file) }}" 
+                        style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none;">
+                    </iframe>
+                </div>
+            {% elif maintenance_file.endswith('.docx') or maintenance_file.endswith('.xlsx') %}
+                <div style="position: relative; padding-bottom: 75%; height: 0; overflow: hidden; max-width: 100%; background: #f8f9fa;">
+                    <iframe src="https://view.officeapps.live.com/op/embed.aspx?src={{ request.url_root }}maintenance_data/{{ maintenance_file }}" 
+                        style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none;">
+                    </iframe>
+                </div>
+            {% else %}
+                <p>Unsupported file format.</p>
+            {% endif %}
+        {% else %}
+            <p>No Maintenance Data available. Please upload a file.</p>
+        {% endif %}
+    </div>
+
+</div>
