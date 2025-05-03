@@ -1192,7 +1192,9 @@ def get_unread_count():
     conn.close()
 
     return jsonify({"count": result["unread_count"] if result else 0})
-
+@app.route('/')
+def index():
+    return render_template('login.html')
 
 
 # ----------------- SERVER START -----------------
