@@ -1197,6 +1197,7 @@ def index():
     return render_template('login.html')
 
 
+
 # ----------------- SERVER START -----------------
 if __name__ == "__main__":
     scheduler = BackgroundScheduler()
